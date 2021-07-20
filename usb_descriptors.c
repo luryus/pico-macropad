@@ -123,7 +123,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t lang_id) {
 /// =====================
 
 uint8_t const hid_report_descriptor[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1))
+    TUD_HID_REPORT_DESC_KEYBOARD()
 };
 
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {
@@ -135,7 +135,10 @@ uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {
 /// ========================
 
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
-#define EPNUM 0x01
+
+// MSB: direction IN
+// bits 0-2: device number (0b001)
+#define EPNUM 0x81
 
 uint8_t const configuration_descriptor[] = {
 
