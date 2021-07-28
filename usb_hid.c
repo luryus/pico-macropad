@@ -5,6 +5,8 @@
 static uint8_t keycodes[6] = { 0 };
 static uint8_t key_count = 0;
 
+static bool dirty = true;
+
 void usb_hid_key_down(uint8_t keycode) {
     if (key_count >= 6) {
         return;
@@ -16,7 +18,7 @@ void usb_hid_key_down(uint8_t keycode) {
             return;
         }
 
-        if (keycodes[i] == 0) {
+        if (place > 6 && keycodes[i] == 0) {
             place = i;
         }
     }
@@ -24,6 +26,8 @@ void usb_hid_key_down(uint8_t keycode) {
     assert(place != UINT8_MAX);
     keycodes[place] = keycode;
     key_count++;
+
+    dirty = true;
 }
 
 void usb_hid_key_up(uint8_t keycode) {
@@ -35,6 +39,7 @@ void usb_hid_key_up(uint8_t keycode) {
         if (keycodes[i] == keycode) {
             keycodes[i] = 0;
             key_count--;
+            dirty = true;
             return;
         }
     }
@@ -64,18 +69,11 @@ static void send_keyboard_hid_report()
     // itf and report_id can be ignored, as there's
     // only one interface and report
 
-    static bool previous_report_empty = false;
-
-    if (key_count == 0 && previous_report_empty) {
+    if (!dirty) {
         return;
     }
-    else if (key_count == 0) {
-        previous_report_empty = true;
-    }
-    else {
-        previous_report_empty = false;
-    }
 
+    dirty = false;
     printf("Sending keycodes: %x, %x, %x, %x, %x, %x \n",
             keycodes[0], keycodes[1], keycodes[2], keycodes[3], keycodes[4], keycodes[5]);
     tud_hid_keyboard_report(0, 0, keycodes);
