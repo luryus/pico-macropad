@@ -20,4 +20,10 @@ pico_add_extra_outputs(macropad)
 target_link_libraries(macropad 
     pico_stdlib
     pico_unique_id
+    hardware_pio
+    hardware_clocks
+    hardware_irq
     tinyusb_device)
+
+
+pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/encoder.pio)

@@ -1,0 +1,55 @@
+.program encoder
+start:
+    // Wait until both pins are high (inactive)
+    wait 1 pin 0
+    wait 1 pin 1
+
+    // Wait until falling edge on pin 1
+    wait 0 pin 1
+
+    // Read pin values to x
+    mov x, pins
+
+    // Determine direction based on the value
+    // - 0b00: both pins are active ==> CCW
+    // - 0b01: only pin 1 is active ==> CW
+    // - 0b11, 0b10: discard
+check_ccw:
+    set y 0
+    jmp x!=y check_cw
+
+out_ccw:
+    irq 0 rel
+
+check_cw:
+    set y 1
+    jmp x!=y start
+
+out_cw:
+    irq 1 rel
+
+
+% c-sdk {
+
+static inline void encoder_pio_init(PIO pio, uint8_t sm, uint8_t offset, uint8_t pin)
+{
+    pio_sm_config conf = encoder_program_get_default_config(offset);
+
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
+    sm_config_set_in_pins(&conf, pin);
+    sm_config_set_jmp_pin(&conf, pin);
+    sm_config_set_in_shift(&conf, false, false, 32);
+    
+    sm_config_set_clkdiv_int_frac(&conf, 16000, 0);
+
+    pio_gpio_init(pio, pin);
+    pio_gpio_init(pio, pin + 1);
+
+    pio_sm_init(pio, sm, offset, &conf);
+
+    pio_sm_set_enabled(pio, sm, true);
+
+}
+
+
+%}
