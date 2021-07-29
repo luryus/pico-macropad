@@ -1,5 +1,7 @@
 .program key_matrix
 
+.define PUBLIC DEBOUNCE_CYCLE_INSTRUCTIONS 75
+.define PUBLIC DEBOUNCE_CYCLES 32
 
 start:
     // Read the input pins with drive pin 0
@@ -18,21 +20,35 @@ start:
 
     // Check if the value changed from previous iteration
     mov y isr
-    jmp x!=y emit
+    jmp x!=y changed
+
+    // If we're in debounce period, jump to the debounce check
+    jmp !osre debounce
 
     // No change detected, clear isr and start from beginning
-    in null, 32
-    jmp start
+    jmp reset
+
+changed:
+    mov x y       // Store new button states to x
+    mov osr null  // Clear osr counter
+    jmp reset
+
+debounce:
+    out null, 1   [31] // Shift one bit from the debounce counter
+    jmp !osre reset [31]   // Counter not empty, so still debouncing
 
 emit:
+    // Debouncing done
     push noblock
-    mov x y
+
+reset:
+    in null, 32
 
 
 % c-sdk {
 
 static inline void key_matrix_pio_init(
-    PIO pio, uint8_t sm, uint8_t offset, uint8_t row_pin, uint8_t col_pin)
+    PIO pio, uint8_t sm, uint8_t offset, uint8_t row_pin, uint8_t col_pin, uint16_t clk_div)
 {
     pio_sm_config conf = key_matrix_program_get_default_config(offset);
 
@@ -52,8 +68,10 @@ static inline void key_matrix_pio_init(
 
     // Shift to left
     sm_config_set_in_shift(&conf, false, false, 32);
+
+    sm_config_set_clkdiv_int_frac(&conf, clk_div, 0);
+
     
-    sm_config_set_clkdiv_int_frac(&conf, 4000, 0);
 
     pio_sm_init(pio, sm, offset, &conf);
 

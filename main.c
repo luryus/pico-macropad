@@ -56,10 +56,46 @@ static inline void setup_encoder() {
     irq_set_exclusive_handler(PIO0_IRQ_0, encoder0_isr);
 }
 
+static void key_matrix_isr() {
+    if (!pio_sm_is_rx_fifo_empty(pio1, key_matrix_sm)) {
+        uint32_t data = pio_sm_get_blocking(pio1, key_matrix_sm);
+
+        printf("[%lu] Key matrix data: 0x%x\n", time_us_32() / 1000, data);
+    }
+}
+
 static inline void setup_key_matrix() {
+
+    uint32_t sys_freq = clock_get_hz(clk_sys);
+    uint32_t total_debounce_instructions = 
+        key_matrix_DEBOUNCE_CYCLE_INSTRUCTIONS * key_matrix_DEBOUNCE_CYCLES;
+    
+    const uint32_t target_debounce_time_ms = 5;
+
+    uint32_t target_clk_div =
+        (target_debounce_time_ms * (sys_freq / 1000)) /* instructions during the target time */
+        / total_debounce_instructions;
+    uint16_t clk_div = target_clk_div > UINT16_MAX ? UINT16_MAX : target_clk_div;
+
+    float effective_freq = (float) sys_freq / clk_div;
+
+    printf("Using clock divider %u (wanted %u):\n"
+        "  clk_sys frequency is %u Hz, with divider effective frequency is %f Hz\n"
+        "  debounce takes approximately %d instructions\n"
+        "  resulting in debounce time %.2f ms (wanted %lu)\n",
+        clk_div, target_clk_div, sys_freq, effective_freq,
+        total_debounce_instructions,
+        (float) total_debounce_instructions*1000 / effective_freq,
+        target_debounce_time_ms);
+
+
     uint offset = pio_add_program(pio1, &key_matrix_program);
     key_matrix_sm = pio_claim_unused_sm(pio1, true);
-    key_matrix_pio_init(pio1, key_matrix_sm, offset, KEY_MATRIX_ROW_PIN, KEY_MATRIX_COL_PIN);
+    key_matrix_pio_init(pio1, key_matrix_sm, offset, KEY_MATRIX_ROW_PIN, KEY_MATRIX_COL_PIN, clk_div);
+
+    irq_set_enabled(PIO1_IRQ_0, true);
+    pio_set_irq0_source_enabled(pio1, pis_sm0_rx_fifo_not_empty + key_matrix_sm, true);
+    irq_set_exclusive_handler(PIO1_IRQ_0, key_matrix_isr);
 }
 
 static inline bool is_button_pressed() {
@@ -70,13 +106,8 @@ static inline bool reserved_addr(uint8_t addr) {
     return (addr & 0x78) == 0 || (addr & 0x78) == 0x78;
 }
 
-static void check_key_matrix() {
-    if (!pio_sm_is_rx_fifo_empty(pio1, key_matrix_sm)) {
-        uint32_t data = pio_sm_get_blocking(pio1, key_matrix_sm);
 
-        printf("Key matrix data: 0x%x\n", data);
-    }
-}
+
 
 int main() {
 
@@ -102,8 +133,6 @@ int main() {
                 ssd1306_send_data(previous_encoder_val);
             }
         }
-
-        check_key_matrix();
 
         if (is_button_pressed()) {
             if (!last_logged_state) {
