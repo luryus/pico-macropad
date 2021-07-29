@@ -15,7 +15,6 @@
 #define ENCODER_B_GPIO 13
 
 
-
 static uint encoder_sm = 0;
 
 static inline void setup_button() {
@@ -24,10 +23,32 @@ static inline void setup_button() {
     gpio_pull_up(BUTTON_GPIO);
 }
 
+static volatile uint8_t encoder0_rotation = 0;
+
+static void encoder0_isr() {
+    int8_t change = 0;
+    if (pio_interrupt_get(pio0, 0)) {
+        // CCW
+        change--;
+    }
+    if (pio_interrupt_get(pio0, 1)) {
+        // CW
+        change++;
+    }
+
+    encoder0_rotation += change;
+
+    // Reset interrupt flags
+    pio_interrupt_clear(pio0, 0);
+    pio_interrupt_clear(pio0, 1);
+}
+
 static inline void setup_encoder() {
     uint offset = pio_add_program(pio0, &encoder_program);
     encoder_sm = pio_claim_unused_sm(pio0, true);
-    encoder_pio_init(pio0, encoder_sm ,offset, ENCODER_A_GPIO);
+    encoder_pio_init(pio0, 0, encoder_sm ,offset, ENCODER_A_GPIO);
+
+    irq_set_exclusive_handler(PIO0_IRQ_0, encoder0_isr);
 }
 
 static inline bool is_button_pressed() {
@@ -37,23 +58,6 @@ static inline bool is_button_pressed() {
 static inline void setup_display() {
 
 }
-
-static uint8_t encoder_val = 0;
-
-static inline uint8_t get_encoder_state() {
-    if (pio_sm_is_rx_fifo_empty(pio0, encoder_sm)) {
-        return 0;
-    }
-
-    uint32_t val = pio_sm_get(pio0, encoder_sm);
-    if (val == 0x02) {
-        encoder_val++;
-    }
-    else if (val == 0x03) {
-        encoder_val--;
-    }
-    printf("Got raw value 0x%02x\n", val);
-    return (uint8_t) encoder_val;
 }
 
 int main() {
@@ -65,12 +69,14 @@ int main() {
     setup_encoder();
 
     bool last_logged_state = false;
+    uint8_t display_state = 0;
+    uint8_t previous_encoder_val = 0;
 
     while (true) {
         //sleep_ms(200);
-        uint8_t encoder = get_encoder_state();
-        if (encoder) {
-            printf("Encoder state: 0x%02x\n", encoder_val);
+        if (encoder0_rotation != previous_encoder_val) {
+            printf("Encoder state: 0x%02x\n", encoder0_rotation);
+            previous_encoder_val = encoder0_rotation;
         }
 
         if (is_button_pressed()) {

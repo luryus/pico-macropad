@@ -8,7 +8,9 @@ start:
     wait 0 pin 1
 
     // Read pin values to x
-    mov x, pins
+    push noblock  // Clear the ISR
+    in pins, 2
+    mov x, isr
 
     // Determine direction based on the value
     // - 0b00: both pins are active ==> CCW
@@ -31,7 +33,8 @@ out_cw:
 
 % c-sdk {
 
-static inline void encoder_pio_init(PIO pio, uint8_t sm, uint8_t offset, uint8_t pin)
+static inline void encoder_pio_init(
+    PIO pio, uint8_t irq_index, uint8_t sm, uint8_t offset, uint8_t pin)
 {
     pio_sm_config conf = encoder_program_get_default_config(offset);
 
@@ -49,6 +52,16 @@ static inline void encoder_pio_init(PIO pio, uint8_t sm, uint8_t offset, uint8_t
 
     pio_sm_set_enabled(pio, sm, true);
 
+    // Clear the IRQ flags
+    uint8_t irq_num = 0;
+    if (pio_get_index(pio) == 0) {
+        irq_num = irq_index == 0 ? PIO0_IRQ_0 : PIO0_IRQ_1;
+    } else {
+        irq_num = irq_index == 0 ? PIO1_IRQ_0 : PIO1_IRQ_1;
+    }
+    irq_set_enabled(irq_num, true);
+    pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt0, true);
+    pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt1, true);
 }
 
 
