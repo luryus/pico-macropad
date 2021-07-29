@@ -9,14 +9,18 @@
 #include "hardware/irq.h"
 #include "tusb.h"
 #include "encoder.pio.h"
+#include "key_matrix.pio.h"
 #include "ssd1306_display.h"
 
 #define BUTTON_GPIO 14
 #define ENCODER_A_GPIO 12
 #define ENCODER_B_GPIO 13
 
+#define KEY_MATRIX_ROW_PIN 2
+#define KEY_MATRIX_COL_PIN 5
 
 static uint encoder_sm = 0;
+static uint key_matrix_sm = 0;
 
 static inline void setup_button() {
     gpio_init(BUTTON_GPIO);
@@ -47,9 +51,15 @@ static void encoder0_isr() {
 static inline void setup_encoder() {
     uint offset = pio_add_program(pio0, &encoder_program);
     encoder_sm = pio_claim_unused_sm(pio0, true);
-    encoder_pio_init(pio0, 0, encoder_sm ,offset, ENCODER_A_GPIO);
+    encoder_pio_init(pio0, 0, encoder_sm, offset, ENCODER_A_GPIO);
 
     irq_set_exclusive_handler(PIO0_IRQ_0, encoder0_isr);
+}
+
+static inline void setup_key_matrix() {
+    uint offset = pio_add_program(pio1, &key_matrix_program);
+    key_matrix_sm = pio_claim_unused_sm(pio1, true);
+    key_matrix_pio_init(pio1, key_matrix_sm, offset, KEY_MATRIX_ROW_PIN, KEY_MATRIX_COL_PIN);
 }
 
 static inline bool is_button_pressed() {
@@ -60,6 +70,14 @@ static inline bool reserved_addr(uint8_t addr) {
     return (addr & 0x78) == 0 || (addr & 0x78) == 0x78;
 }
 
+static void check_key_matrix() {
+    if (!pio_sm_is_rx_fifo_empty(pio1, key_matrix_sm)) {
+        uint32_t data = pio_sm_get_blocking(pio1, key_matrix_sm);
+
+        printf("Key matrix data: 0x%x\n", data);
+    }
+}
+
 int main() {
 
     stdio_init_all();
@@ -67,6 +85,7 @@ int main() {
 
     setup_button();
     setup_encoder();
+    setup_key_matrix();
     ssd1306_init();
 
     bool last_logged_state = false;
@@ -84,7 +103,7 @@ int main() {
             }
         }
 
-
+        check_key_matrix();
 
         if (is_button_pressed()) {
             if (!last_logged_state) {

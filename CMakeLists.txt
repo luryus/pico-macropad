@@ -29,3 +29,4 @@ target_link_libraries(macropad
 
 
 pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/encoder.pio)
+pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/key_matrix.pio)
