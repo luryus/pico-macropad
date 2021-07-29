@@ -9,6 +9,7 @@
 #include "hardware/irq.h"
 #include "tusb.h"
 #include "encoder.pio.h"
+#include "ssd1306_display.h"
 
 #define BUTTON_GPIO 14
 #define ENCODER_A_GPIO 12
@@ -55,9 +56,8 @@ static inline bool is_button_pressed() {
     return !gpio_get(BUTTON_GPIO);
 }
 
-static inline void setup_display() {
-
-}
+static inline bool reserved_addr(uint8_t addr) {
+    return (addr & 0x78) == 0 || (addr & 0x78) == 0x78;
 }
 
 int main() {
@@ -67,17 +67,24 @@ int main() {
 
     setup_button();
     setup_encoder();
+    ssd1306_init();
 
     bool last_logged_state = false;
     uint8_t display_state = 0;
     uint8_t previous_encoder_val = 0;
 
     while (true) {
-        //sleep_ms(200);
         if (encoder0_rotation != previous_encoder_val) {
             printf("Encoder state: 0x%02x\n", encoder0_rotation);
             previous_encoder_val = encoder0_rotation;
+
+            ssd1306_reset_position();
+            for (int i = 0; i < 128; i++) {
+                ssd1306_send_data(previous_encoder_val);
+            }
         }
+
+
 
         if (is_button_pressed()) {
             if (!last_logged_state) {

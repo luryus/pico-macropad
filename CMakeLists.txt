@@ -11,6 +11,7 @@ pico_sdk_init()
 
 add_executable(macropad
     main.c
+    ssd1306_display.c
     usb_descriptors.c
     usb_hid.c)
 target_include_directories(macropad
@@ -23,6 +24,7 @@ target_link_libraries(macropad
     hardware_pio
     hardware_clocks
     hardware_irq
+    hardware_i2c
     tinyusb_device)
 
 
