@@ -6,6 +6,7 @@
 
 #include "ssd1306_display.h"
 
+#include "log.h"
 
 #define SSD1306_CONTROL_COMMAND 0x00
 #define SSD1306_CONTROL_DATA 0x40
@@ -39,7 +40,7 @@ static inline void ssd1306_send_command(uint8_t command) {
 
     #ifndef NDEBUG
     if (ret != 2) {
-        printf("Writing I2C data failed: %d\n", ret);
+        LOGE("Writing I2C data failed: %d", ret);
     }
     #endif
 }
@@ -50,7 +51,7 @@ void ssd1306_send_data(uint8_t data) {
 
     #ifndef NDEBUG
     if (ret != 2) {
-        printf("Writing I2C data failed: %d\n", ret);
+        LOGE("Writing I2C data failed: %d", ret);
     }
     #endif
 }

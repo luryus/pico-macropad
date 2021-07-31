@@ -11,6 +11,7 @@
 #include "encoder.pio.h"
 #include "key_matrix.pio.h"
 #include "ssd1306_display.h"
+#include "log.h"
 
 #define BUTTON_GPIO 14
 #define ENCODER_A_GPIO 12
@@ -59,8 +60,7 @@ static inline void setup_encoder() {
 static void key_matrix_isr() {
     if (!pio_sm_is_rx_fifo_empty(pio1, key_matrix_sm)) {
         uint32_t data = pio_sm_get_blocking(pio1, key_matrix_sm);
-
-        printf("[%lu] Key matrix data: 0x%x\n", time_us_32() / 1000, data);
+        LOGD("Key matrix data: 0x%x", data);
     }
 }
 
@@ -79,10 +79,10 @@ static inline void setup_key_matrix() {
 
     float effective_freq = (float) sys_freq / clk_div;
 
-    printf("Using clock divider %u (wanted %u):\n"
+    LOGI("Using clock divider %u (wanted %u):\n"
         "  clk_sys frequency is %u Hz, with divider effective frequency is %f Hz\n"
         "  debounce takes approximately %d instructions\n"
-        "  resulting in debounce time %.2f ms (wanted %lu)\n",
+        "  resulting in debounce time %.2f ms (wanted %lu)",
         clk_div, target_clk_div, sys_freq, effective_freq,
         total_debounce_instructions,
         (float) total_debounce_instructions*1000 / effective_freq,
@@ -114,6 +114,11 @@ int main() {
     stdio_init_all();
     //tusb_init();
 
+    LOGI("Info");
+    LOGD("Debug");
+    LOGW("Warning");
+    LOGE("Error");
+
     setup_button();
     setup_encoder();
     setup_key_matrix();
@@ -125,7 +130,7 @@ int main() {
 
     while (true) {
         if (encoder0_rotation != previous_encoder_val) {
-            printf("Encoder state: 0x%02x\n", encoder0_rotation);
+            LOGD("Encoder state: 0x%02x", encoder0_rotation);
             previous_encoder_val = encoder0_rotation;
 
             ssd1306_reset_position();
@@ -136,14 +141,14 @@ int main() {
 
         if (is_button_pressed()) {
             if (!last_logged_state) {
-                printf("Button down\n");
+                LOGD("Button down");
                 last_logged_state = true;
             }
             usb_hid_key_down(0x73);
             usb_hid_key_down(0x72);
         } else {
             if (last_logged_state) {
-                printf("Button up\n");
+                LOGD("Button up");
                 last_logged_state = false;
             }
             usb_hid_key_up(0x73);

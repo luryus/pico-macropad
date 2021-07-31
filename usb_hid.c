@@ -1,6 +1,7 @@
 #include "usb_hid.h"
 
 #include "tusb.h"
+#include "log.h"
 
 static uint8_t keycodes[6] = { 0 };
 static uint8_t key_count = 0;
@@ -74,7 +75,7 @@ static void send_keyboard_hid_report()
     }
 
     dirty = false;
-    printf("Sending keycodes: %x, %x, %x, %x, %x, %x \n",
+    LOGD("Sending keycodes: %x, %x, %x, %x, %x, %x \n",
             keycodes[0], keycodes[1], keycodes[2], keycodes[3], keycodes[4], keycodes[5]);
     tud_hid_keyboard_report(0, 0, keycodes);
 }
