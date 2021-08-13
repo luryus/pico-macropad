@@ -47,7 +47,7 @@ static inline void encoder_pio_init(
 
     pio_gpio_init(pio, pin);
     pio_gpio_init(pio, pin + 1);
-
+    gpio_pull_up(pin + 1);
     pio_sm_init(pio, sm, offset, &conf);
 
     pio_sm_set_enabled(pio, sm, true);
