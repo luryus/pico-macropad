@@ -10,8 +10,9 @@
 #include "tusb.h"
 #include "encoder.pio.h"
 #include "key_matrix.pio.h"
-#include "ssd1306_display.h"
 #include "log.h"
+#include "pico_u8g2_i2c.h"
+#include "u8g2.h"
 
 #define BUTTON_GPIO 14
 #define ENCODER_A_GPIO 12
@@ -22,6 +23,8 @@
 
 static uint encoder_sm = 0;
 static uint key_matrix_sm = 0;
+
+static u8g2_t u8g2;
 
 static inline void setup_button() {
     gpio_init(BUTTON_GPIO);
@@ -106,8 +109,26 @@ static inline bool reserved_addr(uint8_t addr) {
     return (addr & 0x78) == 0 || (addr & 0x78) == 0x78;
 }
 
+static inline bool setup_u8g2() {
+    u8g2_Setup_ssd1306_i2c_128x32_univision_f(
+        &u8g2,
+        U8G2_R0,
+        pico_u8g2_byte_i2c,
+        pico_u8g2_delay_cb
+    );
+    u8g2_InitDisplay(&u8g2);
+    u8g2_SetPowerSave(&u8g2, false);
+    u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
 
+    u8g2_DrawStr(&u8g2, 0, 8, "Macropad");
+    u8g2_DrawStr(&u8g2, 0, 20, "Firmware 0.1");
 
+    u8g2_SendBuffer(&u8g2);
+}
+
+static void display_off() {
+    u8g2_SetPowerSave(&u8g2, true);
+}
 
 int main() {
 
@@ -122,21 +143,30 @@ int main() {
     setup_button();
     setup_encoder();
     setup_key_matrix();
-    ssd1306_init();
+    setup_u8g2();
 
     bool last_logged_state = false;
-    uint8_t display_state = 0;
-    uint8_t previous_encoder_val = 0;
+    bool display_on = true;
+    absolute_time_t next_display_off = make_timeout_time_ms(5000);
+    uint8_t previous_encoder_val = 255;
 
     while (true) {
+        if (display_on && absolute_time_diff_us(next_display_off, get_absolute_time()) > 0) {
+            display_off();
+            display_on = false;
+        }
+
         if (encoder0_rotation != previous_encoder_val) {
             LOGD("Encoder state: 0x%02x", encoder0_rotation);
             previous_encoder_val = encoder0_rotation;
 
-            ssd1306_reset_position();
-            for (int i = 0; i < 128; i++) {
-                ssd1306_send_data(previous_encoder_val);
-            }
+            //u8g2_ClearBuffer(&u8g2);
+            
+            char buf[4];
+            snprintf(buf, 4, "%u", encoder0_rotation);
+            buf[3] = '\0';
+            //u8g2_DrawStr(&u8g2, 0, 0, buf);
+            //u8g2_SendBuffer(&u8g2);
         }
 
         if (is_button_pressed()) {
