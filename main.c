@@ -15,8 +15,8 @@
 #include "u8g2.h"
 
 #define BUTTON_GPIO 14
-#define ENCODER_A_GPIO 12
-#define ENCODER_B_GPIO 13
+#define ENCODER_A_GPIO 10
+#define ENCODER_B_GPIO 11
 
 #define KEY_MATRIX_ROW_PIN 2
 #define KEY_MATRIX_COL_PIN 5
@@ -50,6 +50,8 @@ static void encoder0_isr() {
     // Reset interrupt flags
     pio_interrupt_clear(pio0, 0);
     pio_interrupt_clear(pio0, 1);
+
+    usb_hid_set_encoder_rotation(encoder0_rotation);
 }
 
 static inline void setup_encoder() {
@@ -63,7 +65,7 @@ static inline void setup_encoder() {
 static void key_matrix_isr() {
     if (!pio_sm_is_rx_fifo_empty(pio1, key_matrix_sm)) {
         uint32_t data = pio_sm_get_blocking(pio1, key_matrix_sm);
-        LOGD("Key matrix data: 0x%x", data);
+        usb_hid_set_keys((uint16_t) data);
     }
 }
 
@@ -133,7 +135,7 @@ static void display_off() {
 int main() {
 
     stdio_init_all();
-    //tusb_init();
+    tusb_init();
 
     LOGI("Info");
     LOGD("Debug");
@@ -174,19 +176,15 @@ int main() {
                 LOGD("Button down");
                 last_logged_state = true;
             }
-            usb_hid_key_down(0x73);
-            usb_hid_key_down(0x72);
         } else {
             if (last_logged_state) {
                 LOGD("Button up");
                 last_logged_state = false;
             }
-            usb_hid_key_up(0x73);
-            usb_hid_key_up(0x72);
         }
 
         tud_task();
-        //hid_task();
+        hid_task();
     }
 
     return 1;

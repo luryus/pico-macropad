@@ -1,6 +1,8 @@
 #include "tusb.h"
 #include "pico/unique_id.h"
 
+#include "usb_hid.h"
+
 /// Device descriptor
 /// ==================
 
@@ -123,7 +125,33 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t lang_id) {
 /// =====================
 
 uint8_t const hid_report_descriptor[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD()
+
+    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
+    HID_USAGE(HID_USAGE_DESKTOP_KEYPAD),
+    HID_COLLECTION(HID_COLLECTION_APPLICATION),
+        // 12 bits, one for each key
+        HID_USAGE_PAGE(HID_USAGE_PAGE_KEYBOARD),
+            HID_USAGE_MIN(0x68),
+            HID_USAGE_MAX(0x73),
+            HID_LOGICAL_MIN(0),
+            HID_LOGICAL_MAX(1),
+            HID_REPORT_COUNT(12),
+            HID_REPORT_SIZE(1),
+            HID_INPUT(HID_DATA|HID_VARIABLE|HID_ABSOLUTE),
+            
+            // 4 bit padding
+            HID_REPORT_COUNT(1),
+            HID_REPORT_SIZE(4),
+            HID_INPUT(HID_CONSTANT),
+
+    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
+            HID_USAGE(HID_USAGE_DESKTOP_DIAL),
+            HID_LOGICAL_MIN(0x81),
+            HID_LOGICAL_MAX(0x7f),
+            HID_REPORT_COUNT(1),
+            HID_REPORT_SIZE(8),
+            HID_INPUT(HID_DATA|HID_VARIABLE|HID_RELATIVE),
+    HID_COLLECTION_END
 };
 
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t interface) {

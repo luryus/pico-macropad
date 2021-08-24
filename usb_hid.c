@@ -3,47 +3,18 @@
 #include "tusb.h"
 #include "log.h"
 
-static uint8_t keycodes[6] = { 0 };
-static uint8_t key_count = 0;
+static volatile uint16_t curr_key_states = 0x0;
+static volatile uint8_t curr_encoder_rot = 0x0;
+static volatile bool dirty = true;
 
-static bool dirty = true;
-
-void usb_hid_key_down(uint8_t keycode) {
-    if (key_count >= 6) {
-        return;
-    }
-
-    uint8_t place = UINT8_MAX;
-    for (uint8_t i = 0; i < 6; i++) {
-        if (keycodes[i] == keycode) {
-            return;
-        }
-
-        if (place > 6 && keycodes[i] == 0) {
-            place = i;
-        }
-    }
-
-    assert(place != UINT8_MAX);
-    keycodes[place] = keycode;
-    key_count++;
-
+void usb_hid_set_keys(uint16_t key_states) {
     dirty = true;
+    curr_key_states = key_states & 0x0fff;
 }
 
-void usb_hid_key_up(uint8_t keycode) {
-    if (key_count == 0) {
-        return;
-    }
-
-    for (uint8_t i = 0; i < 6; i++) {
-        if (keycodes[i] == keycode) {
-            keycodes[i] = 0;
-            key_count--;
-            dirty = true;
-            return;
-        }
-    }
+void usb_hid_set_encoder_rotation(uint8_t rot) {
+    dirty = true;
+    curr_encoder_rot = rot;
 }
 
 uint16_t tud_hid_get_report_cb(
@@ -61,35 +32,45 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 
 }
 
+typedef struct __attribute__((packed)) {
+    uint16_t keys;
+    uint8_t encoder_rot;
+} hid_report_t;
+
 static void send_keyboard_hid_report()
 {
     if (!tud_hid_ready()) {
         return;
     }
 
-    // itf and report_id can be ignored, as there's
-    // only one interface and report
-
     if (!dirty) {
         return;
     }
 
+    hid_report_t rep = {
+        .keys = curr_key_states,
+        .encoder_rot = curr_encoder_rot
+    };
+
     dirty = false;
-    LOGD("Sending keycodes: %x, %x, %x, %x, %x, %x \n",
-            keycodes[0], keycodes[1], keycodes[2], keycodes[3], keycodes[4], keycodes[5]);
-    tud_hid_keyboard_report(0, 0, keycodes);
+    LOGD("Sending keys: 0x%03x, encoder rot: 0x%02x", rep.keys, rep.encoder_rot);
+    return;
+    bool send_report_res = tud_hid_n_report(0, 0, &rep, sizeof(rep));
+    if (!send_report_res) {
+        LOGW("Failed to send keyboard report");
+    }
 }
 
 void hid_task()
 {
-#define REPORT_SEND_INTERVAL_MS 10
+    const uint8_t REPORT_SEND_INTERVAL_MS = 10;
 
-    static uint32_t next_send_start_ms = 0;
+    static absolute_time_t next_send_time = {0};
 
-    if (next_send_start_ms > to_ms_since_boot(get_absolute_time())) {
+    if (absolute_time_diff_us(get_absolute_time(), next_send_time) > 0) {
         return;
     }
-    next_send_start_ms += REPORT_SEND_INTERVAL_MS;
+    next_send_time = delayed_by_ms(next_send_time, REPORT_SEND_INTERVAL_MS);
 
     send_keyboard_hid_report();
 }
