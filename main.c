@@ -11,28 +11,27 @@
 #include "encoder.pio.h"
 #include "key_matrix.pio.h"
 #include "log.h"
-#include "pico_u8g2_i2c.h"
-#include "u8g2.h"
+#include "display_ui.h"
+#include "utils.h"
 
-#define BUTTON_GPIO 14
-#define ENCODER_A_GPIO 10
-#define ENCODER_B_GPIO 11
+#define ENCODER_0_A_GPIO 10
+#define ENCODER_0_B_GPIO 11
+#define ENCODER_0_BUTTON_GPIO 12
+
+#define ENCODER_1_A_GPIO 13
+#define ENCODER_1_B_GPIO 14
+#define ENCODER_1_BUTTON_GPIO 15
+
 
 #define KEY_MATRIX_ROW_PIN 2
 #define KEY_MATRIX_COL_PIN 5
 
-static uint encoder_sm = 0;
+static uint encoder0_sm = 0;
+static uint encoder1_sm = 0;
 static uint key_matrix_sm = 0;
 
-static u8g2_t u8g2;
-
-static inline void setup_button() {
-    gpio_init(BUTTON_GPIO);
-    gpio_set_dir(BUTTON_GPIO, false /* in */);
-    gpio_pull_up(BUTTON_GPIO);
-}
-
 static volatile uint8_t encoder0_rotation = 0;
+static volatile uint8_t encoder1_rotation = 0;
 
 static void encoder0_isr() {
     int8_t change = 0;
@@ -51,21 +50,59 @@ static void encoder0_isr() {
     pio_interrupt_clear(pio0, 0);
     pio_interrupt_clear(pio0, 1);
 
-    usb_hid_set_encoder_rotation(encoder0_rotation);
+    uint8_t rot = encoder0_rotation;
+    ui_set_input_states(NULL, &rot, NULL, NULL, NULL);
 }
 
-static inline void setup_encoder() {
-    uint offset = pio_add_program(pio0, &encoder_program);
-    encoder_sm = pio_claim_unused_sm(pio0, true);
-    encoder_pio_init(pio0, 0, encoder_sm, offset, ENCODER_A_GPIO);
+static void encoder1_isr() {
+    int8_t change = 0;
+    if (pio_interrupt_get(pio0, 2)) {
+        // CW
+        change--;
+    }
+    if (pio_interrupt_get(pio0, 3)) {
+        // CCW
+        change++;
+    }
 
+    encoder1_rotation += change;
+
+    // Reset interrupt flags
+    pio_interrupt_clear(pio0, 2);
+    pio_interrupt_clear(pio0, 3);
+
+    uint8_t rot = encoder1_rotation;
+    ui_set_input_states(NULL, NULL, NULL, &rot, NULL);
+    usb_hid_set_encoder_rotation(rot);
+}
+
+
+static inline void setup_encoders() {
+    encoder0_sm = 0;
+    encoder1_sm = 2;
+
+    pio_claim_sm_mask(pio0, 5);  // Claims SMs 0 and 2 (0b101)
+
+    uint offset = pio_add_program(pio0, &encoder_program);
+    encoder_pio_init(pio0, 0, encoder0_sm, offset, ENCODER_0_A_GPIO);
     irq_set_exclusive_handler(PIO0_IRQ_0, encoder0_isr);
+
+    offset = pio_add_program(pio0, &encoder_program);
+    encoder_pio_init(pio0, 1, encoder1_sm, offset, ENCODER_1_A_GPIO);
+    irq_set_exclusive_handler(PIO0_IRQ_1, encoder1_isr);
+
+    // Setup the encoder buttons
+    gpio_init(ENCODER_0_BUTTON_GPIO);
+    gpio_pull_up(ENCODER_0_BUTTON_GPIO);
+    gpio_init(ENCODER_1_BUTTON_GPIO);
+    gpio_pull_up(ENCODER_1_BUTTON_GPIO);
 }
 
 static void key_matrix_isr() {
     if (!pio_sm_is_rx_fifo_empty(pio1, key_matrix_sm)) {
-        uint32_t data = pio_sm_get_blocking(pio1, key_matrix_sm);
-        usb_hid_set_keys((uint16_t) data);
+        uint16_t data = (uint16_t) pio_sm_get_blocking(pio1, key_matrix_sm);
+        usb_hid_set_keys(data);
+        ui_set_input_states(&data, NULL, NULL, NULL, NULL);
     }
 }
 
@@ -103,33 +140,45 @@ static inline void setup_key_matrix() {
     irq_set_exclusive_handler(PIO1_IRQ_0, key_matrix_isr);
 }
 
-static inline bool is_button_pressed() {
-    return !gpio_get(BUTTON_GPIO);
+typedef struct {
+    bool stable_state;
+    bool debouncing;
+    absolute_time_t debounce_end;
+} debounce_state_t;
+
+// Returns true if the button state was changed
+static bool check_button_debounced(uint8_t gpio, debounce_state_t* state) {
+    bool s = !gpio_get(gpio);
+    if (s != state->stable_state) {
+        if (state->debouncing) {
+            if (time_passed(state->debounce_end)) {
+                state->debouncing = false;
+                state->stable_state = s;
+                return true;
+            }
+        } else {
+            state->debounce_end = make_timeout_time_ms(5);
+            state->debouncing = true;
+        }
+    } else {
+        if (state->debouncing) {
+            state->debouncing = false;
+        }
+    }
+
+    return false;
 }
 
-static inline bool reserved_addr(uint8_t addr) {
-    return (addr & 0x78) == 0 || (addr & 0x78) == 0x78;
-}
+static void check_encoder_buttons() {
+    static debounce_state_t encoder0_debounce_state = {0};
+    static debounce_state_t encoder1_debounce_state = {0};
 
-static inline bool setup_u8g2() {
-    u8g2_Setup_ssd1306_i2c_128x32_univision_f(
-        &u8g2,
-        U8G2_R0,
-        pico_u8g2_byte_i2c,
-        pico_u8g2_delay_cb
-    );
-    u8g2_InitDisplay(&u8g2);
-    u8g2_SetPowerSave(&u8g2, false);
-    u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
-
-    u8g2_DrawStr(&u8g2, 0, 8, "Macropad");
-    u8g2_DrawStr(&u8g2, 0, 20, "Firmware 0.1");
-
-    u8g2_SendBuffer(&u8g2);
-}
-
-static void display_off() {
-    u8g2_SetPowerSave(&u8g2, true);
+    if (check_button_debounced(ENCODER_0_BUTTON_GPIO, &encoder0_debounce_state)) {
+        ui_set_input_states(NULL, NULL, &encoder0_debounce_state.stable_state, NULL, NULL);        
+    }
+    if (check_button_debounced(ENCODER_1_BUTTON_GPIO, &encoder1_debounce_state)) {
+        ui_set_input_states(NULL, NULL, NULL, NULL, &encoder1_debounce_state.stable_state);        
+    }
 }
 
 int main() {
@@ -137,15 +186,10 @@ int main() {
     stdio_init_all();
     tusb_init();
 
-    LOGI("Info");
-    LOGD("Debug");
-    LOGW("Warning");
-    LOGE("Error");
-
-    setup_button();
-    setup_encoder();
+    setup_encoders();
     setup_key_matrix();
-    setup_u8g2();
+
+    ui_init();
 
     bool last_logged_state = false;
     bool display_on = true;
@@ -153,38 +197,10 @@ int main() {
     uint8_t previous_encoder_val = 255;
 
     while (true) {
-        if (display_on && absolute_time_diff_us(next_display_off, get_absolute_time()) > 0) {
-            display_off();
-            display_on = false;
-        }
-
-        if (encoder0_rotation != previous_encoder_val) {
-            LOGD("Encoder state: 0x%02x", encoder0_rotation);
-            previous_encoder_val = encoder0_rotation;
-
-            //u8g2_ClearBuffer(&u8g2);
-            
-            char buf[4];
-            snprintf(buf, 4, "%u", encoder0_rotation);
-            buf[3] = '\0';
-            //u8g2_DrawStr(&u8g2, 0, 0, buf);
-            //u8g2_SendBuffer(&u8g2);
-        }
-
-        if (is_button_pressed()) {
-            if (!last_logged_state) {
-                LOGD("Button down");
-                last_logged_state = true;
-            }
-        } else {
-            if (last_logged_state) {
-                LOGD("Button up");
-                last_logged_state = false;
-            }
-        }
-
+        check_encoder_buttons();
         tud_task();
         hid_task();
+        ui_task();
     }
 
     return 1;

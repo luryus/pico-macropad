@@ -60,8 +60,14 @@ static inline void encoder_pio_init(
         irq_num = irq_index == 0 ? PIO1_IRQ_0 : PIO1_IRQ_1;
     }
     irq_set_enabled(irq_num, true);
-    pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt0, true);
-    pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt1, true);
+
+    if (sm == 0) {
+        pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt0, true);
+        pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt1, true);
+    } else if (sm == 2) {
+        pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt2, true);
+        pio_set_irqn_source_enabled(pio, irq_index, pis_interrupt3, true);
+    }
 }
 
 

@@ -14,6 +14,8 @@ add_executable(macropad
     usb_descriptors.c
     usb_hid.c
     pico_u8g2_i2c.c
+    display_ui.c
+    utils.c
     ${U8G2_SRC_FILES})
 
 target_include_directories(macropad

@@ -2,10 +2,13 @@
 
 #include "tusb.h"
 #include "log.h"
+#include "utils.h"
 
 static volatile uint16_t curr_key_states = 0x0;
 static volatile uint8_t curr_encoder_rot = 0x0;
 static volatile bool dirty = true;
+
+static bool event_sending_enabled = false;
 
 void usb_hid_set_keys(uint16_t key_states) {
     dirty = true;
@@ -54,7 +57,10 @@ static void send_keyboard_hid_report()
 
     dirty = false;
     LOGD("Sending keys: 0x%03x, encoder rot: 0x%02x", rep.keys, rep.encoder_rot);
-    return;
+    
+    if (!event_sending_enabled) {
+        return;
+    }
     bool send_report_res = tud_hid_n_report(0, 0, &rep, sizeof(rep));
     if (!send_report_res) {
         LOGW("Failed to send keyboard report");
@@ -67,7 +73,7 @@ void hid_task()
 
     static absolute_time_t next_send_time = {0};
 
-    if (absolute_time_diff_us(get_absolute_time(), next_send_time) > 0) {
+    if (!time_passed(next_send_time)) {
         return;
     }
     next_send_time = delayed_by_ms(next_send_time, REPORT_SEND_INTERVAL_MS);
@@ -80,3 +86,13 @@ void tud_hid_report_complete_cb(uint8_t interface, uint8_t const* report, uint8_
 
 }
 
+
+bool usb_hid_is_event_sending_enabled()
+{
+    return event_sending_enabled;
+}
+
+void usb_hid_set_event_sending_enabled(bool enabled)
+{
+    event_sending_enabled = enabled;
+}
