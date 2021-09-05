@@ -11,8 +11,12 @@
 #include "utils.h"
 #include "usb_hid.h"
 
+#define FPS            20
+#define FRAME_TIME_US  1000000 / FPS
+
 static bool display_on = true;
 static absolute_time_t next_display_off = {0};
+static absolute_time_t next_frame = {0};
 
 enum ui_state_t
 {
@@ -238,6 +242,12 @@ void ui_init()
 
 void ui_task()
 {
+    // Limit FPS to save resources and cycles and stuff
+    if (!time_passed(next_frame)) {
+        return;
+    }
+    next_frame = delayed_by_us(next_frame, FRAME_TIME_US);
+
     current_input_state = unsafe_current_input_state;
 
     if (input_changed)
