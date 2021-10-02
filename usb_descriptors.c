@@ -129,6 +129,7 @@ uint8_t const hid_report_descriptor[] = {
     HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
     HID_USAGE(HID_USAGE_DESKTOP_KEYPAD),
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
+        HID_REPORT_ID(1)
         // 12 bits, one for each key
         HID_USAGE_PAGE(HID_USAGE_PAGE_KEYBOARD),
             HID_USAGE_MIN(0x68),
@@ -144,10 +145,16 @@ uint8_t const hid_report_descriptor[] = {
             HID_REPORT_SIZE(4),
             HID_INPUT(HID_CONSTANT),
 
+    HID_COLLECTION_END,
+
     HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
+    HID_USAGE(HID_USAGE_DESKTOP_MULTI_AXIS_CONTROLLER),
+    HID_COLLECTION(HID_COLLECTION_APPLICATION),
+        HID_REPORT_ID(2)
+        HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
             HID_USAGE(HID_USAGE_DESKTOP_DIAL),
-            HID_LOGICAL_MIN(0x81),
-            HID_LOGICAL_MAX(0x7f),
+            HID_LOGICAL_MIN(INT8_MIN),
+            HID_LOGICAL_MAX(INT8_MAX),
             HID_REPORT_COUNT(1),
             HID_REPORT_SIZE(8),
             HID_INPUT(HID_DATA|HID_VARIABLE|HID_RELATIVE),
@@ -172,23 +179,23 @@ uint8_t const configuration_descriptor[] = {
 
     TUD_CONFIG_DESCRIPTOR(
         1,   // Configuration number. Only one configuration ==> 1
-        1,   // Interface count. Just one for now
+        1,   // Interface count. Just a single HID interface
         0,   // String index. Zero, as no description required
         CONFIG_TOTAL_LEN,
         0,   // Attributes. None required for this
         100  // Pull 100mA max
     ),
 
+    // Only one interface
     TUD_HID_DESCRIPTOR(
-        0,   // Only one interface, so number is 0
+        0,   // First interface --> index 0
         0,   // String index. Again, none required
         HID_ITF_PROTOCOL_NONE,  // do not try to conform to a keyboard protocol
         sizeof(hid_report_descriptor),
         EPNUM,
         CFG_TUD_HID_EP_BUFSIZE,
         5
-    )
-
+    ),
 };
 
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {

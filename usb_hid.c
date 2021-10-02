@@ -6,17 +6,18 @@
 
 static volatile uint16_t curr_key_states = 0x0;
 static volatile uint8_t curr_encoder_rot = 0x0;
-static volatile bool dirty = true;
+static volatile bool keypad_dirty = true;
+static volatile bool encoder_dirty = true;
 
 static bool event_sending_enabled = false;
 
 void usb_hid_set_keys(uint16_t key_states) {
-    dirty = true;
+    keypad_dirty = true;
     curr_key_states = key_states & 0x0fff;
 }
 
 void usb_hid_set_encoder_rotation(uint8_t rot) {
-    dirty = true;
+    encoder_dirty = true;
     curr_encoder_rot = rot;
 }
 
@@ -37,8 +38,11 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 
 typedef struct __attribute__((packed)) {
     uint16_t keys;
+} hid_report_keypad_t;
+
+typedef struct __attribute__((packed)) {
     uint8_t encoder_rot;
-} hid_report_t;
+} hid_report_encoder_t;
 
 static void send_keyboard_hid_report()
 {
@@ -46,24 +50,49 @@ static void send_keyboard_hid_report()
         return;
     }
 
-    if (!dirty) {
+    if (!keypad_dirty) {
         return;
     }
 
-    hid_report_t rep = {
-        .keys = curr_key_states,
-        .encoder_rot = curr_encoder_rot
+    hid_report_keypad_t rep = {
+        .keys = curr_key_states
     };
 
-    dirty = false;
-    LOGD("Sending keys: 0x%03x, encoder rot: 0x%02x", rep.keys, rep.encoder_rot);
+    keypad_dirty = false;
+    LOGD("Sending keys: 0x%03x", rep.keys);
     
     if (!event_sending_enabled) {
         return;
     }
-    bool send_report_res = tud_hid_n_report(0, 0, &rep, sizeof(rep));
+    bool send_report_res = tud_hid_n_report(0, 1, &rep, sizeof(rep));
     if (!send_report_res) {
         LOGW("Failed to send keyboard report");
+    }
+}
+
+static void send_encoder_hid_report()
+{
+    if (!tud_hid_ready()) {
+        return;
+    }
+
+    if (!encoder_dirty) {
+        return;
+    }
+
+    hid_report_encoder_t rep = {
+        .encoder_rot = curr_encoder_rot
+    };
+
+    encoder_dirty = false;
+    LOGD("Sending encoder: 0x%02x", rep.encoder_rot);
+    
+    if (!event_sending_enabled) {
+        return;
+    }
+    bool send_report_res = tud_hid_n_report(0, 2, &rep, sizeof(rep));
+    if (!send_report_res) {
+        LOGW("Failed to send encoder report");
     }
 }
 
@@ -79,6 +108,7 @@ void hid_task()
     next_send_time = delayed_by_ms(next_send_time, REPORT_SEND_INTERVAL_MS);
 
     send_keyboard_hid_report();
+    send_encoder_hid_report();
 }
 
 void tud_hid_report_complete_cb(uint8_t interface, uint8_t const* report, uint8_t len)
