@@ -1,5 +1,7 @@
+#include "pico.h"
 #include "pico/unique_id.h"
 #include "tusb.h"
+#include <stdint.h>
 
 #include "usb_hid.h"
 
@@ -122,26 +124,70 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t lang_id) {
 /// HID Report Descriptor
 /// =====================
 
+// clang-format off
 uint8_t const hid_report_descriptor[] = {
 
-    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP), HID_USAGE(HID_USAGE_DESKTOP_KEYPAD),
+    // Keypad input report
+    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
+    HID_USAGE(HID_USAGE_DESKTOP_KEYPAD),
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
-    HID_REPORT_ID(1)
-    // 12 bits, one for each key
-    HID_USAGE_PAGE(HID_USAGE_PAGE_KEYBOARD),
-    HID_USAGE_MIN(0x68), HID_USAGE_MAX(0x73), HID_LOGICAL_MIN(0), HID_LOGICAL_MAX(1),
-    HID_REPORT_COUNT(12), HID_REPORT_SIZE(1), HID_INPUT(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
-
-    // 4 bit padding
-    HID_REPORT_COUNT(1), HID_REPORT_SIZE(4), HID_INPUT(HID_CONSTANT),
+        HID_REPORT_ID(1)
+        // 12 bits, one for each key
+        HID_USAGE_PAGE(HID_USAGE_PAGE_KEYBOARD),
+            HID_USAGE_MIN(0x68),
+            HID_USAGE_MAX(0x73),
+            HID_LOGICAL_MIN(0),
+            HID_LOGICAL_MAX(1),
+            HID_REPORT_COUNT(12),
+            HID_REPORT_SIZE(1),
+            HID_INPUT(HID_DATA|HID_VARIABLE|HID_ABSOLUTE),
+            
+            // 4 bit padding
+            HID_REPORT_COUNT(1),
+            HID_REPORT_SIZE(4),
+            HID_INPUT(HID_CONSTANT),
 
     HID_COLLECTION_END,
 
-    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP), HID_USAGE(HID_USAGE_DESKTOP_MULTI_AXIS_CONTROLLER),
+    // Encoder input report
+    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
+    HID_USAGE(HID_USAGE_DESKTOP_MULTI_AXIS_CONTROLLER),
     HID_COLLECTION(HID_COLLECTION_APPLICATION),
-    HID_REPORT_ID(2) HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP), HID_USAGE(HID_USAGE_DESKTOP_DIAL),
-    HID_LOGICAL_MIN(INT8_MIN), HID_LOGICAL_MAX(INT8_MAX), HID_REPORT_COUNT(1), HID_REPORT_SIZE(8),
-    HID_INPUT(HID_DATA | HID_VARIABLE | HID_RELATIVE), HID_COLLECTION_END};
+        HID_REPORT_ID(2)
+        HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
+            HID_USAGE(HID_USAGE_DESKTOP_DIAL),
+            HID_LOGICAL_MIN(INT8_MIN),
+            HID_LOGICAL_MAX(INT8_MAX),
+            HID_REPORT_COUNT(1),
+            HID_REPORT_SIZE(8),
+            HID_INPUT(HID_DATA|HID_VARIABLE|HID_ABSOLUTE|HID_WRAP),
+    HID_COLLECTION_END,
+
+    HID_USAGE_PAGE(0x14),  // Auxiliary display page
+    HID_COLLECTION(0x02),
+        // Active profile name output report
+        HID_REPORT_ID(3)
+        HID_USAGE_PAGE_N(0xFF00, 2),   // Vendor-defined page
+            HID_USAGE(0x01),   // 1 == profile name usage
+            HID_LOGICAL_MIN(0),
+            HID_LOGICAL_MAX(255),
+            HID_REPORT_COUNT(8),
+            HID_REPORT_SIZE(8),
+            HID_REPORT_ITEM(HID_DATA|HID_VARIABLE|HID_BUFFERED_BYTES, RI_MAIN_OUTPUT, RI_TYPE_MAIN, 2),
+
+        // Active profile key names output report
+        HID_REPORT_ID(4)
+        HID_USAGE_PAGE_N(0xFF00, 2),   // Vendor-defined page
+            HID_USAGE(0x02),   // 2 == key name usage
+            HID_LOGICAL_MIN(0),
+            HID_LOGICAL_MAX(255),
+            HID_REPORT_COUNT(12),
+            HID_REPORT_SIZE(8*4),
+            HID_REPORT_ITEM(HID_DATA|HID_VARIABLE|HID_BUFFERED_BYTES, RI_MAIN_OUTPUT, RI_TYPE_MAIN, 2),
+    HID_COLLECTION_END,
+};
+
+// clang-format on
 
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t interface) {
     return hid_report_descriptor;

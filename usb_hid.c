@@ -1,8 +1,12 @@
 #include "usb_hid.h"
 
+#include "display_ui.h"
 #include "log.h"
+#include "profiles.h"
 #include "tusb.h"
 #include "utils.h"
+
+#include <stdlib.h>
 
 static volatile uint16_t curr_key_states = 0x0;
 static volatile uint8_t curr_encoder_rot = 0x0;
@@ -30,6 +34,23 @@ uint16_t tud_hid_get_report_cb(
 void tud_hid_set_report_cb(
     uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
     uint16_t bufsize) {
+
+    LOGD(
+        "tud_hid_set_report_cb: report_id %hhu, report_type %u, bufsize %hu", report_id,
+        (uint8_t)report_type, bufsize);
+    char *buf = (char *)calloc(2 * bufsize + 1, sizeof(char));
+    for (int i = 0; i < bufsize; i++) {
+        snprintf(buf + i * 2, 3, "%02X", buffer[i]);
+    }
+    LOGD("%s", buf);
+    free(buf);
+
+    if (report_id == 3) {
+        if (bufsize != 9) {
+            LOGW("Invalid report 3 (profile name) message, len %d", bufsize);
+            return;
+        }
+    }
 }
 
 typedef struct __attribute__((packed)) {

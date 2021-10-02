@@ -33,6 +33,7 @@ out_cw:
 
 % c-sdk {
 
+#include "hardware/irq.h"
 static inline void encoder_pio_init(
     PIO pio, uint8_t irq_index, uint8_t sm, uint8_t offset, uint8_t pin)
 {
