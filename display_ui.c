@@ -8,6 +8,7 @@
 
 #include "log.h"
 #include "pico_u8g2_i2c.h"
+#include "profiles.h"
 #include "usb_hid.h"
 #include "utils.h"
 #include "version.h"
@@ -24,6 +25,7 @@ enum ui_state_t {
     UI_STATE_SCREEN_INPUT_DEBUG,
     UI_STATE_SCREEN_MENU,
     UI_STATE_SCREEN_USB_EVENT_SETTING,
+    UI_STATE_SCREEN_PROFILE_NAME,
 } current_ui_state = UI_STATE_SCREEN_VERSION;
 
 typedef struct {
@@ -41,6 +43,8 @@ static volatile bool input_changed;
 
 static uint8_t menu_selected_index = 0;
 static uint8_t usb_config_selected_index = 0;
+
+static absolute_time_t profile_name_exit = {0};
 
 static const char *const menu_items[] = {"Debug", "USBConf", "Version"};
 #define MENU_ITEMS_TOTAL 3
@@ -131,6 +135,14 @@ void ui_draw_usb_config_screen() {
     u8g2_DrawStr(&u8g2, 64, 20, "Disable");
 }
 
+static void ui_draw_profile_name_screen() {
+    const char *name = prof_get_current_name();
+
+    u8g2_SetFont(&u8g2, u8g2_font_t0_14_mr);
+    u8g2_SetDrawColor(&u8g2, 1);
+    u8g2_DrawStr(&u8g2, 0, 20, name);
+}
+
 #pragma endregion
 
 #pragma region Input handling functions
@@ -199,6 +211,15 @@ ui_handle_input_menu_screen(bool button_raising, bool button_falling, int8_t enc
     }
 }
 
+static void ui_handle_input_profile_name_screen(
+    bool button_raising, bool button_falling, int8_t encoder_delta) {
+    // Key events actually not handled for now
+
+    if (time_passed(profile_name_exit)) {
+        current_ui_state = UI_STATE_SCREEN_MENU;
+    }
+}
+
 #pragma endregion
 
 void ui_init() {
@@ -260,6 +281,9 @@ void ui_task() {
     case UI_STATE_SCREEN_USB_EVENT_SETTING:
         ui_handle_input_usb_config_screen(button_raising, button_falling, encoder_delta);
         break;
+    case UI_STATE_SCREEN_PROFILE_NAME:
+        ui_handle_input_profile_name_screen(button_raising, button_falling, encoder_delta);
+        break;
     }
 
     // Draw
@@ -276,6 +300,9 @@ void ui_task() {
         break;
     case UI_STATE_SCREEN_USB_EVENT_SETTING:
         ui_draw_usb_config_screen();
+        break;
+    case UI_STATE_SCREEN_PROFILE_NAME:
+        ui_draw_profile_name_screen();
         break;
     }
     u8g2_SendBuffer(&u8g2);
@@ -309,4 +336,15 @@ void ui_set_input_states(
     }
 
     input_changed = c;
+}
+
+void ui_trigger_profile_change() {
+    // This is called when an USB event is received for a profile change
+    if (current_ui_state == UI_STATE_SCREEN_PROFILE_NAME ||
+        current_ui_state == UI_STATE_SCREEN_MENU || current_ui_state == UI_STATE_SCREEN_VERSION) {
+        LOGD("Showing profile name screen");
+        profile_name_exit = make_timeout_time_ms(700);
+        current_ui_state = UI_STATE_SCREEN_PROFILE_NAME;
+        input_changed = true;
+    }
 }

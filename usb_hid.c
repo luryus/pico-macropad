@@ -50,6 +50,8 @@ void tud_hid_set_report_cb(
             LOGW("Invalid report 3 (profile name) message, len %d", bufsize);
             return;
         }
+        prof_set_current_profile_name(buffer + 1);
+        ui_trigger_profile_change();
     }
 }
 
