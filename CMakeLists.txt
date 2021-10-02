@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 3.13)
 
-include(pico_sdk_import.cmake)
-include(u8g2_import.cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
 
-project(macropad)
+include(pico_sdk_import)
+include(u8g2_import)
+include(GetGitRevisionDescription)
+
+get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+
+project(macropad VERSION 0.2)
 set(CMAKE_C_STANDARD 11)
 add_definitions(-DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
+
+configure_file("version.h.in" "version.h" @ONLY)
 
 pico_sdk_init()
 

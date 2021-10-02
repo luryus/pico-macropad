@@ -10,6 +10,7 @@
 #include "pico_u8g2_i2c.h"
 #include "utils.h"
 #include "usb_hid.h"
+#include "version.h"
 
 #define FPS            20
 #define FRAME_TIME_US  1000000 / FPS
@@ -66,7 +67,11 @@ void ui_draw_version_screen()
     u8g2_SetDrawColor(&u8g2, 1);
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
     u8g2_DrawStr(&u8g2, 0, 8, "Macropad");
-    u8g2_DrawStr(&u8g2, 0, 20, "Firmware 0.1");
+
+    char version_str[30] = { 0 };
+    snprintf(version_str, 30, "%s (%.6s)", MACROPAD_VERSION, MACROPAD_VERSION_GIT_SHA);
+
+    u8g2_DrawStr(&u8g2, 0, 20, version_str);
 }
 
 void ui_draw_input_debug_screen()
