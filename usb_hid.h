@@ -1,11 +1,11 @@
 #if !defined(USB_HID__H)
 #define USB_HID__H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-#define USB_HID_REPORT_NUM_KEYPAD   1
-#define USB_HID_REPORT_NUM_ENCODER  2
+#define USB_HID_REPORT_NUM_KEYPAD  1
+#define USB_HID_REPORT_NUM_ENCODER 2
 
 void hid_task();
 

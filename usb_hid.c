@@ -1,7 +1,7 @@
 #include "usb_hid.h"
 
-#include "tusb.h"
 #include "log.h"
+#include "tusb.h"
 #include "utils.h"
 
 static volatile uint16_t curr_key_states = 0x0;
@@ -22,18 +22,14 @@ void usb_hid_set_encoder_rotation(uint8_t rot) {
 }
 
 uint16_t tud_hid_get_report_cb(
-    uint8_t itf, 
-    uint8_t report_id,
-    hid_report_type_t report_type,
-    uint8_t* buffer,
-    uint16_t reqlen)
-{
+    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer,
+    uint16_t reqlen) {
     return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
-{
-
+void tud_hid_set_report_cb(
+    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
+    uint16_t bufsize) {
 }
 
 typedef struct __attribute__((packed)) {
@@ -44,8 +40,7 @@ typedef struct __attribute__((packed)) {
     uint8_t encoder_rot;
 } hid_report_encoder_t;
 
-static void send_keyboard_hid_report()
-{
+static void send_keyboard_hid_report() {
     if (!tud_hid_ready()) {
         return;
     }
@@ -54,13 +49,11 @@ static void send_keyboard_hid_report()
         return;
     }
 
-    hid_report_keypad_t rep = {
-        .keys = curr_key_states
-    };
+    hid_report_keypad_t rep = {.keys = curr_key_states};
 
     keypad_dirty = false;
     LOGD("Sending keys: 0x%03x", rep.keys);
-    
+
     if (!event_sending_enabled) {
         return;
     }
@@ -70,8 +63,7 @@ static void send_keyboard_hid_report()
     }
 }
 
-static void send_encoder_hid_report()
-{
+static void send_encoder_hid_report() {
     if (!tud_hid_ready()) {
         return;
     }
@@ -80,13 +72,11 @@ static void send_encoder_hid_report()
         return;
     }
 
-    hid_report_encoder_t rep = {
-        .encoder_rot = curr_encoder_rot
-    };
+    hid_report_encoder_t rep = {.encoder_rot = curr_encoder_rot};
 
     encoder_dirty = false;
     LOGD("Sending encoder: 0x%02x", rep.encoder_rot);
-    
+
     if (!event_sending_enabled) {
         return;
     }
@@ -96,8 +86,7 @@ static void send_encoder_hid_report()
     }
 }
 
-void hid_task()
-{
+void hid_task() {
     const uint8_t REPORT_SEND_INTERVAL_MS = 10;
 
     static absolute_time_t next_send_time = {0};
@@ -111,18 +100,13 @@ void hid_task()
     send_encoder_hid_report();
 }
 
-void tud_hid_report_complete_cb(uint8_t interface, uint8_t const* report, uint8_t len)
-{
-
+void tud_hid_report_complete_cb(uint8_t interface, uint8_t const *report, uint8_t len) {
 }
 
-
-bool usb_hid_is_event_sending_enabled()
-{
+bool usb_hid_is_event_sending_enabled() {
     return event_sending_enabled;
 }
 
-void usb_hid_set_event_sending_enabled(bool enabled)
-{
+void usb_hid_set_event_sending_enabled(bool enabled) {
     event_sending_enabled = enabled;
 }
