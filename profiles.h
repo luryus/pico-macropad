@@ -7,6 +7,6 @@ void prof_set_current_key_names(const char *key_names);
 
 char *prof_get_current_name();
 
-char **prof_get_current_key_names();
+char *prof_get_current_key_names();
 
 #endif // PROFILES__H

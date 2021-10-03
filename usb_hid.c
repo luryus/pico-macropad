@@ -52,6 +52,12 @@ void tud_hid_set_report_cb(
         }
         prof_set_current_profile_name(buffer + 1);
         ui_trigger_profile_change();
+    } else if (report_id == 4) {
+        if (bufsize != 48 + 1) {
+            LOGW("Invalid report 4 (key names) message, len %d", bufsize);
+            return;
+        }
+        prof_set_current_key_names(buffer + 1);
     }
 }
 

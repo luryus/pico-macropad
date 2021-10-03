@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "display_ui.h"
 
@@ -26,6 +27,7 @@ enum ui_state_t {
     UI_STATE_SCREEN_MENU,
     UI_STATE_SCREEN_USB_EVENT_SETTING,
     UI_STATE_SCREEN_PROFILE_NAME,
+    UI_STATE_SCREEN_KEYMAP,
 } current_ui_state = UI_STATE_SCREEN_VERSION;
 
 typedef struct {
@@ -61,7 +63,7 @@ static void ui_display_off() {
 
 #pragma region Drawing functions
 
-void ui_draw_version_screen() {
+static void ui_draw_version_screen() {
     u8g2_SetDrawColor(&u8g2, 1);
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
     u8g2_DrawStr(&u8g2, 0, 8, "Macropad");
@@ -72,7 +74,7 @@ void ui_draw_version_screen() {
     u8g2_DrawStr(&u8g2, 0, 20, version_str);
 }
 
-void ui_draw_input_debug_screen() {
+static void ui_draw_input_debug_screen() {
     const uint8_t key_side = 6;
 
     u8g2_SetDrawColor(&u8g2, 1);
@@ -103,7 +105,7 @@ void ui_draw_input_debug_screen() {
     u8g2_DrawStr(&u8g2, 60, 20, encoder_val);
 }
 
-void ui_draw_menu_screen() {
+static void ui_draw_menu_screen() {
     const uint8_t items_on_row = 3;
     const uint8_t item_w = 40;
     const uint8_t item_h = 8;
@@ -121,7 +123,7 @@ void ui_draw_menu_screen() {
     }
 }
 
-void ui_draw_usb_config_screen() {
+static void ui_draw_usb_config_screen() {
     bool current_state = usb_hid_is_event_sending_enabled();
 
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
@@ -141,6 +143,35 @@ static void ui_draw_profile_name_screen() {
     u8g2_SetFont(&u8g2, u8g2_font_t0_14_mr);
     u8g2_SetDrawColor(&u8g2, 1);
     u8g2_DrawStr(&u8g2, 0, 20, name);
+}
+
+static void ui_draw_keymap_screen() {
+    const uint8_t item_w = 34;
+    const uint8_t item_h = 8;
+
+    const char *key_names = prof_get_current_key_names();
+
+    // 4x3 array (width x height)
+    // The key_names array contains the names as four-character
+    // sequences back to back with no null termination.
+    char current_key_name[5] = {0};
+    u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
+
+    for (uint8_t y = 0; y < 3; y++) {
+        for (uint8_t x = 0; x < 4; x++) {
+            memcpy(current_key_name, key_names + y * 4 * 4 + x * 4, 4);
+
+            bool key_state = ((current_input_state.key_matrix >> ((2 - y) * 4)) >> x) & 0x1;
+
+            // If key is down, draw with white background and black text.
+            // Otherwise, white text on black.
+            u8g2_SetDrawColor(&u8g2, !key_state);
+
+            uint8_t text_x = x * item_w;
+            uint8_t text_y = (y + 1) * item_h + (y * 4);
+            u8g2_DrawStr(&u8g2, text_x, text_y, current_key_name);
+        }
+    }
 }
 
 #pragma endregion
@@ -216,6 +247,14 @@ static void ui_handle_input_profile_name_screen(
     // Key events actually not handled for now
 
     if (time_passed(profile_name_exit)) {
+        current_ui_state = UI_STATE_SCREEN_KEYMAP;
+    }
+}
+
+static void
+ui_handle_input_keymap_screen(bool button_raising, bool button_falling, int8_t encoder_delta) {
+    if (button_falling) {
+        // Go back to menu
         current_ui_state = UI_STATE_SCREEN_MENU;
     }
 }
@@ -284,6 +323,9 @@ void ui_task() {
     case UI_STATE_SCREEN_PROFILE_NAME:
         ui_handle_input_profile_name_screen(button_raising, button_falling, encoder_delta);
         break;
+    case UI_STATE_SCREEN_KEYMAP:
+        ui_handle_input_keymap_screen(button_raising, button_falling, encoder_delta);
+        break;
     }
 
     // Draw
@@ -303,6 +345,9 @@ void ui_task() {
         break;
     case UI_STATE_SCREEN_PROFILE_NAME:
         ui_draw_profile_name_screen();
+        break;
+    case UI_STATE_SCREEN_KEYMAP:
+        ui_draw_keymap_screen();
         break;
     }
     u8g2_SendBuffer(&u8g2);
@@ -341,7 +386,8 @@ void ui_set_input_states(
 void ui_trigger_profile_change() {
     // This is called when an USB event is received for a profile change
     if (current_ui_state == UI_STATE_SCREEN_PROFILE_NAME ||
-        current_ui_state == UI_STATE_SCREEN_MENU || current_ui_state == UI_STATE_SCREEN_VERSION) {
+        current_ui_state == UI_STATE_SCREEN_MENU || current_ui_state == UI_STATE_SCREEN_VERSION ||
+        current_ui_state == UI_STATE_SCREEN_KEYMAP) {
         LOGD("Showing profile name screen");
         profile_name_exit = make_timeout_time_ms(700);
         current_ui_state = UI_STATE_SCREEN_PROFILE_NAME;

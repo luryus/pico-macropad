@@ -20,3 +20,7 @@ void prof_set_current_key_names(const char *key_names) {
 char *prof_get_current_name() {
     return current_profile_name;
 }
+
+char *prof_get_current_key_names() {
+    return current_key_names;
+}
