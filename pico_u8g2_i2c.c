@@ -10,7 +10,8 @@
 #define DISPLAY_SCL_PIN 17
 #define I2C_INSTANCE    i2c0
 
-uint8_t pico_u8g2_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
+uint8_t pico_u8g2_delay_cb(
+    u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, __attribute__((unused)) void *arg_ptr) {
     // Only implements the necessary messages for using Pico's built-in i2c
 
     switch (msg) {

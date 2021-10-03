@@ -178,24 +178,26 @@ static void ui_draw_keymap_screen() {
 
 #pragma region Input handling functions
 
-static void
-ui_handle_input_version_screen(bool button_raising, bool button_falling, int8_t encoder_delta) {
+static void ui_handle_input_version_screen(
+    __attribute__((unused)) bool button_raising, bool button_falling,
+    __attribute__((unused)) int8_t encoder_delta) {
     if (button_falling) {
         // Go back to menu
         current_ui_state = UI_STATE_SCREEN_MENU;
     }
 }
 
-static void
-ui_handle_input_input_debug_screen(bool button_raising, bool button_falling, int8_t encoder_delta) {
+static void ui_handle_input_input_debug_screen(
+    __attribute__((unused)) bool button_raising, bool button_falling,
+    __attribute__((unused)) int8_t encoder_delta) {
     if (button_falling) {
         // Go back to menu
         current_ui_state = UI_STATE_SCREEN_MENU;
     }
 }
 
-static void
-ui_handle_input_usb_config_screen(bool button_raising, bool button_falling, int8_t encoder_delta) {
+static void ui_handle_input_usb_config_screen(
+    __attribute__((unused)) bool button_raising, bool button_falling, int8_t encoder_delta) {
     while (encoder_delta < 0) {
         encoder_delta += 2;
     }
@@ -216,8 +218,8 @@ ui_handle_input_usb_config_screen(bool button_raising, bool button_falling, int8
     }
 }
 
-static void
-ui_handle_input_menu_screen(bool button_raising, bool button_falling, int8_t encoder_delta) {
+static void ui_handle_input_menu_screen(
+    __attribute__((unused)) bool button_raising, bool button_falling, int8_t encoder_delta) {
     while (encoder_delta < 0) {
         encoder_delta += MENU_ITEMS_TOTAL;
     }
@@ -243,7 +245,8 @@ ui_handle_input_menu_screen(bool button_raising, bool button_falling, int8_t enc
 }
 
 static void ui_handle_input_profile_name_screen(
-    bool button_raising, bool button_falling, int8_t encoder_delta) {
+    __attribute__((unused)) bool button_raising, __attribute__((unused)) bool button_falling,
+    __attribute__((unused)) int8_t encoder_delta) {
     // Key events actually not handled for now
 
     if (time_passed(profile_name_exit)) {
@@ -251,8 +254,9 @@ static void ui_handle_input_profile_name_screen(
     }
 }
 
-static void
-ui_handle_input_keymap_screen(bool button_raising, bool button_falling, int8_t encoder_delta) {
+static void ui_handle_input_keymap_screen(
+    __attribute__((unused)) bool button_raising, bool button_falling,
+    __attribute__((unused)) int8_t encoder_delta) {
     if (button_falling) {
         // Go back to menu
         current_ui_state = UI_STATE_SCREEN_MENU;
@@ -356,8 +360,8 @@ void ui_task() {
 }
 
 void ui_set_input_states(
-    uint16_t *key_matrix, uint8_t *encoder_0, bool *encoder_0_button, uint8_t *encoder_1,
-    bool *encoder_1_button) {
+    const uint16_t *key_matrix, const uint8_t *encoder_0, const bool *encoder_0_button,
+    const uint8_t *encoder_1, const bool *encoder_1_button) {
     bool c = false;
     if (key_matrix) {
         unsafe_current_input_state.key_matrix = *key_matrix;

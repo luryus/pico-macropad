@@ -66,10 +66,10 @@ static const char *get_serial_string() {
     return (const char *)serial_buffer;
 }
 
-uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t lang_id) {
+uint16_t const *tud_descriptor_string_cb(uint8_t index, __attribute__((unused)) uint16_t lang_id) {
     // lang_id is ignored, we just support English
 
-    assert(index >= 0 && index <= 3);
+    assert(index <= 3);
 
     // The description to return.
     // It must be stay valid during transmission; thus static.
@@ -116,7 +116,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t lang_id) {
     // Offset 1: Descriptor type == string descriptor == 0x03
 
     descriptor_data[0] =
-        (TUSB_DESC_STRING << 8) | 2 + 2 * data_len; // Two-byte header + utf-16 data
+        (TUSB_DESC_STRING << 8) | (2 + 2 * data_len); // Two-byte header + utf-16 data
 
     return descriptor_data;
 }
@@ -200,7 +200,7 @@ uint8_t const hid_report_descriptor[] = {
 
 // clang-format on
 
-uint8_t const *tud_hid_descriptor_report_cb(uint8_t interface) {
+uint8_t const *tud_hid_descriptor_report_cb(__attribute__((unused)) uint8_t interface) {
     return hid_report_descriptor;
 }
 
@@ -232,6 +232,6 @@ uint8_t const configuration_descriptor[] = {
         sizeof(hid_report_descriptor), EPNUM, CFG_TUD_HID_EP_BUFSIZE, 5),
 };
 
-uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
+uint8_t const *tud_descriptor_configuration_cb(__attribute__((unused)) uint8_t index) {
     return configuration_descriptor;
 }

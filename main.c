@@ -120,9 +120,9 @@ static inline void setup_key_matrix() {
     float effective_freq = (float)sys_freq / clk_div;
 
     LOGI(
-        "Using clock divider %u (wanted %u):\n"
-        "  clk_sys frequency is %u Hz, with divider effective frequency is %f Hz\n"
-        "  debounce takes approximately %d instructions\n"
+        "Using clock divider %u (wanted %lu):\n"
+        "  clk_sys frequency is %lu Hz, with divider effective frequency is %f Hz\n"
+        "  debounce takes approximately %lu instructions\n"
         "  resulting in debounce time %.2f ms (wanted %lu)",
         clk_div, target_clk_div, sys_freq, effective_freq, total_debounce_instructions,
         (float)total_debounce_instructions * 1000 / effective_freq, target_debounce_time_ms);
@@ -175,7 +175,7 @@ static void check_encoder_buttons() {
     }
     if (check_button_debounced(ENCODER_1_BUTTON_GPIO, &encoder1_debounce_state)) {
         ui_set_input_states(NULL, NULL, NULL, NULL, &encoder1_debounce_state.stable_state);
-        usb_hid_set_encoder_button(encoder1_debounce_state.stable_state);
+        usb_hid_set_encoder_button(&encoder1_debounce_state.stable_state);
     }
 }
 
@@ -188,11 +188,6 @@ int main() {
     setup_key_matrix();
 
     ui_init();
-
-    bool last_logged_state = false;
-    bool display_on = true;
-    absolute_time_t next_display_off = make_timeout_time_ms(5000);
-    uint8_t previous_encoder_val = 255;
 
     while (true) {
         check_encoder_buttons();

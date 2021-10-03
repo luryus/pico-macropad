@@ -16,14 +16,10 @@ configure_file("version.h.in" "version.h" @ONLY)
 
 pico_sdk_init()
 
+FILE(GLOB SRCS *.c)
+
 add_executable(macropad
-    main.c
-    usb_descriptors.c
-    usb_hid.c
-    pico_u8g2_i2c.c
-    display_ui.c
-    utils.c
-    profiles.c
+    ${SRCS}
     ${U8G2_SRC_FILES})
 
 target_include_directories(macropad
@@ -39,6 +35,10 @@ target_link_libraries(macropad
     hardware_irq
     hardware_i2c
     tinyusb_device)
+
+set_source_files_properties(
+    ${SRCS}
+    PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror -Wno-unknown-pragmas")
 
 
 pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/encoder.pio)

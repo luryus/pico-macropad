@@ -33,14 +33,15 @@ void usb_hid_set_encoder_button(bool state) {
 }
 
 uint16_t tud_hid_get_report_cb(
-    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer,
-    uint16_t reqlen) {
+    __attribute__((unused)) uint8_t itf, __attribute__((unused)) uint8_t report_id,
+    __attribute__((unused)) hid_report_type_t report_type, __attribute__((unused)) uint8_t *buffer,
+    __attribute__((unused)) uint16_t reqlen) {
     return 0;
 }
 
 void tud_hid_set_report_cb(
-    uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
-    uint16_t bufsize) {
+    __attribute__((unused)) uint8_t itf, uint8_t report_id, hid_report_type_t report_type,
+    uint8_t const *buffer, uint16_t bufsize) {
 
     LOGD(
         "tud_hid_set_report_cb: report_id %hhu, report_type %u, bufsize %hu", report_id,
@@ -57,14 +58,14 @@ void tud_hid_set_report_cb(
             LOGW("Invalid report 3 (profile name) message, len %d", bufsize);
             return;
         }
-        prof_set_current_profile_name(buffer + 1);
+        prof_set_current_profile_name((const char *)(buffer + 1));
         ui_trigger_profile_change();
     } else if (report_id == 4) {
         if (bufsize != 48 + 1) {
             LOGW("Invalid report 4 (key names) message, len %d", bufsize);
             return;
         }
-        prof_set_current_key_names(buffer + 1);
+        prof_set_current_key_names((const char *)(buffer + 1));
     }
 }
 
@@ -140,7 +141,9 @@ void hid_task() {
     send_encoder_hid_report();
 }
 
-void tud_hid_report_complete_cb(uint8_t interface, uint8_t const *report, uint8_t len) {
+void tud_hid_report_complete_cb(
+    __attribute__((unused)) uint8_t interface, __attribute__((unused)) uint8_t const *report,
+    __attribute__((unused)) uint8_t len) {
 }
 
 bool usb_hid_is_event_sending_enabled() {
