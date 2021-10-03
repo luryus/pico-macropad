@@ -13,6 +13,8 @@ void usb_hid_set_keys(uint16_t key_states);
 
 void usb_hid_set_encoder_rotation(uint8_t rot);
 
+void usb_hid_set_encoder_button(bool state);
+
 bool usb_hid_is_event_sending_enabled();
 
 void usb_hid_set_event_sending_enabled(bool enabled);

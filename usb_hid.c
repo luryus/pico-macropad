@@ -10,6 +10,7 @@
 
 static volatile uint16_t curr_key_states = 0x0;
 static volatile uint8_t curr_encoder_rot = 0x0;
+static volatile bool curr_encoder_btn = false;
 static volatile bool keypad_dirty = true;
 static volatile bool encoder_dirty = true;
 
@@ -23,6 +24,12 @@ void usb_hid_set_keys(uint16_t key_states) {
 void usb_hid_set_encoder_rotation(uint8_t rot) {
     encoder_dirty = true;
     curr_encoder_rot = rot;
+}
+
+void usb_hid_set_encoder_button(bool state) {
+    encoder_dirty = true;
+    curr_encoder_btn = state;
+    LOGD("set_encoder_button %d", state);
 }
 
 uint16_t tud_hid_get_report_cb(
@@ -67,6 +74,7 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     uint8_t encoder_rot;
+    uint8_t button;
 } hid_report_encoder_t;
 
 static void send_keyboard_hid_report() {
@@ -101,10 +109,13 @@ static void send_encoder_hid_report() {
         return;
     }
 
-    hid_report_encoder_t rep = {.encoder_rot = curr_encoder_rot};
+    LOGD("send_encoder_hid_report: curr_encoder_btn: %d", curr_encoder_btn);
+
+    hid_report_encoder_t rep = {
+        .encoder_rot = curr_encoder_rot, .button = curr_encoder_btn ? 0x01 : 0x00};
 
     encoder_dirty = false;
-    LOGD("Sending encoder: 0x%02x", rep.encoder_rot);
+    LOGD("Sending encoder: 0x%02x, button: 0x%02x", rep.encoder_rot, rep.button);
 
     if (!event_sending_enabled) {
         return;

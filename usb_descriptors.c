@@ -161,6 +161,17 @@ uint8_t const hid_report_descriptor[] = {
             HID_REPORT_COUNT(1),
             HID_REPORT_SIZE(8),
             HID_INPUT(HID_DATA|HID_VARIABLE|HID_ABSOLUTE|HID_WRAP),
+        HID_USAGE_PAGE(HID_USAGE_PAGE_BUTTON),
+            HID_USAGE(0x01), // "Primary button"
+            HID_LOGICAL_MIN(0),
+            HID_LOGICAL_MAX(1),
+            HID_REPORT_COUNT(1),
+            HID_REPORT_SIZE(1),
+            HID_INPUT(HID_DATA|HID_VARIABLE|HID_ABSOLUTE),
+            // 7 bit padding
+            HID_REPORT_COUNT(1),
+            HID_REPORT_SIZE(7),
+            HID_INPUT(HID_CONSTANT),
     HID_COLLECTION_END,
 
     HID_USAGE_PAGE(0x14),  // Auxiliary display page
