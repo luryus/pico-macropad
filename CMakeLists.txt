@@ -12,18 +12,18 @@ project(macropad VERSION 0.4)
 set(CMAKE_C_STANDARD 11)
 add_definitions(-DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
 
-configure_file("version.h.in" "version.h" @ONLY)
+configure_file("src/version.h.in" "version.h" @ONLY)
 
 pico_sdk_init()
 
-FILE(GLOB SRCS *.c)
+FILE(GLOB SRCS src/*.c)
 
 add_executable(macropad
     ${SRCS}
     ${U8G2_SRC_FILES})
 
 target_include_directories(macropad
-    PRIVATE ${CMAKE_CURRENT_LIST_DIR}
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src
     PRIVATE ${U8G2_SRC_PATH})
 
 pico_add_extra_outputs(macropad)
@@ -41,5 +41,5 @@ set_source_files_properties(
     PROPERTIES COMPILE_FLAGS "-Wall -Wextra -Werror -Wno-unknown-pragmas")
 
 
-pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/encoder.pio)
-pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/key_matrix.pio)
+pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/src/encoder.pio)
+pico_generate_pio_header(macropad ${CMAKE_CURRENT_LIST_DIR}/src/key_matrix.pio)
