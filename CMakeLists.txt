@@ -8,7 +8,7 @@ include(GetGitRevisionDescription)
 
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 
-project(macropad VERSION 0.3)
+project(macropad VERSION 0.4)
 set(CMAKE_C_STANDARD 11)
 add_definitions(-DCMAKE_EXPORT_COMPILE_COMMANDS=ON)
 

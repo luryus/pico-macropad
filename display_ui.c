@@ -49,8 +49,8 @@ static uint8_t usb_config_selected_index = 0;
 
 static absolute_time_t profile_name_exit = {0};
 
-static const char *const menu_items[] = {"Debug", "USBConf", "Version"};
-#define MENU_ITEMS_TOTAL 3
+static const char *const menu_items[] = {"Debug", "USBConf", "Version", "Keymap"};
+#define MENU_ITEMS_TOTAL 4
 
 static u8g2_t u8g2;
 
@@ -246,6 +246,9 @@ static void ui_handle_input_menu_screen(
             break;
         case 2:
             current_ui_state = UI_STATE_SCREEN_VERSION;
+            break;
+        case 3:
+            current_ui_state = UI_STATE_SCREEN_KEYMAP;
             break;
         default:
             LOGW("Unknown menu item selected: %hhu", menu_selected_index);
