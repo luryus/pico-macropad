@@ -1,5 +1,6 @@
 #include "usb_hid.h"
 
+#include "constants.h"
 #include "display_ui.h"
 #include "log.h"
 #include "profiles.h"
@@ -54,14 +55,14 @@ void tud_hid_set_report_cb(
     free(buf);
 
     if (report_id == 3) {
-        if (bufsize != 9) {
+        if (bufsize != 1 + MACROPAD_PROFILE_NAME_LENGTH) {
             LOGW("Invalid report 3 (profile name) message, len %d", bufsize);
             return;
         }
         prof_set_current_profile_name((const char *)(buffer + 1));
         ui_trigger_profile_change();
     } else if (report_id == 4) {
-        if (bufsize != 48 + 1) {
+        if (bufsize != MACROPAD_KEY_NAME_LENGTH * MACROPAD_KEY_COUNT + 1) {
             LOGW("Invalid report 4 (key names) message, len %d", bufsize);
             return;
         }

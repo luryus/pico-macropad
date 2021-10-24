@@ -7,6 +7,7 @@
 #include "pico/stdlib.h"
 #include "u8g2.h"
 
+#include "constants.h"
 #include "log.h"
 #include "pico_u8g2_i2c.h"
 #include "profiles.h"
@@ -61,6 +62,10 @@ static void ui_display_off() {
     u8g2_SetPowerSave(&u8g2, true);
 }
 
+static inline bool get_current_key_state(uint8_t y, uint8_t x) {
+    return ((current_input_state.key_matrix >> ((2 - y) * 4)) >> x) & 0x1;
+}
+
 #pragma region Drawing functions
 
 static void ui_draw_version_screen() {
@@ -79,9 +84,9 @@ static void ui_draw_input_debug_screen() {
 
     u8g2_SetDrawColor(&u8g2, 1);
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
-    for (uint8_t y = 0; y < 3; y++) {
-        for (uint8_t x = 0; x < 4; x++) {
-            bool key_state = ((current_input_state.key_matrix >> ((2 - y) * 4)) >> x) & 0x1;
+    for (uint8_t y = 0; y < MACROPAD_KEY_MATRIX_HEIGHT; y++) {
+        for (uint8_t x = 0; x < MACROPAD_KEY_MATRIX_WIDTH; x++) {
+            bool key_state = get_current_key_state(y, x);
             uint8_t rect_x = 2 + x * (key_side + 2);
             uint8_t rect_y = 2 + y * (key_side + 2);
 
@@ -157,18 +162,22 @@ static void ui_draw_keymap_screen() {
     char current_key_name[5] = {0};
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
 
-    for (uint8_t y = 0; y < 3; y++) {
-        for (uint8_t x = 0; x < 4; x++) {
-            memcpy(current_key_name, key_names + y * 4 * 4 + x * 4, 4);
+    for (uint8_t y = 0; y < MACROPAD_KEY_MATRIX_HEIGHT; y++) {
+        for (uint8_t x = 0; x < MACROPAD_KEY_MATRIX_WIDTH; x++) {
+            memcpy(
+                current_key_name,
+                key_names + y * MACROPAD_KEY_MATRIX_WIDTH * MACROPAD_KEY_NAME_LENGTH +
+                    x * MACROPAD_KEY_NAME_LENGTH,
+                MACROPAD_KEY_NAME_LENGTH);
 
-            bool key_state = ((current_input_state.key_matrix >> ((2 - y) * 4)) >> x) & 0x1;
+            bool key_state = get_current_key_state(y, x);
 
             // If key is down, draw with white background and black text.
             // Otherwise, white text on black.
             u8g2_SetDrawColor(&u8g2, !key_state);
 
             uint8_t text_x = x * item_w;
-            uint8_t text_y = (y + 1) * item_h + (y * 4);
+            uint8_t text_y = (y + 1) * item_h + (y * MACROPAD_KEY_MATRIX_WIDTH);
             u8g2_DrawStr(&u8g2, text_x, text_y, current_key_name);
         }
     }
@@ -270,12 +279,6 @@ void ui_init() {
         &u8g2, U8G2_R0, pico_u8g2_byte_i2c, pico_u8g2_delay_cb);
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, false);
-    u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
-
-    u8g2_DrawStr(&u8g2, 0, 8, "Macropad");
-    u8g2_DrawStr(&u8g2, 0, 20, "Firmware 0.1");
-
-    u8g2_SendBuffer(&u8g2);
 
     next_display_off = make_timeout_time_ms(5000);
 }

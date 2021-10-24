@@ -3,6 +3,7 @@
 #include "tusb.h"
 #include <stdint.h>
 
+#include "constants.h"
 #include "usb_hid.h"
 
 /// Device descriptor
@@ -175,25 +176,26 @@ uint8_t const hid_report_descriptor[] = {
     HID_COLLECTION_END,
 
     HID_USAGE_PAGE(0x14),  // Auxiliary display page
-    HID_COLLECTION(0x02),
+    HID_USAGE(0x02),  // Auxiliary display collection
+    HID_COLLECTION(HID_COLLECTION_APPLICATION),
         // Active profile name output report
         HID_REPORT_ID(3)
         HID_USAGE_PAGE_N(0xFF00, 2),   // Vendor-defined page
-            HID_USAGE(0x01),   // 1 == profile name usage
+            HID_USAGE(0x01),           // 1 == profile name usage
             HID_LOGICAL_MIN(0),
             HID_LOGICAL_MAX(255),
-            HID_REPORT_COUNT(8),
+            HID_REPORT_COUNT(MACROPAD_PROFILE_NAME_LENGTH),
             HID_REPORT_SIZE(8),
             HID_REPORT_ITEM(HID_DATA|HID_VARIABLE|HID_BUFFERED_BYTES, RI_MAIN_OUTPUT, RI_TYPE_MAIN, 2),
 
         // Active profile key names output report
         HID_REPORT_ID(4)
         HID_USAGE_PAGE_N(0xFF00, 2),   // Vendor-defined page
-            HID_USAGE(0x02),   // 2 == key name usage
+            HID_USAGE(0x02),           // 2 == key name usage
             HID_LOGICAL_MIN(0),
             HID_LOGICAL_MAX(255),
-            HID_REPORT_COUNT(12),
-            HID_REPORT_SIZE(8*4),
+            HID_REPORT_COUNT(MACROPAD_KEY_COUNT),
+            HID_REPORT_SIZE(8*MACROPAD_KEY_NAME_LENGTH),
             HID_REPORT_ITEM(HID_DATA|HID_VARIABLE|HID_BUFFERED_BYTES, RI_MAIN_OUTPUT, RI_TYPE_MAIN, 2),
     HID_COLLECTION_END,
 };
