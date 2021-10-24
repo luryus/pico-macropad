@@ -175,7 +175,7 @@ static void check_encoder_buttons() {
     }
     if (check_button_debounced(ENCODER_1_BUTTON_GPIO, &encoder1_debounce_state)) {
         ui_set_input_states(NULL, NULL, NULL, NULL, &encoder1_debounce_state.stable_state);
-        usb_hid_set_encoder_button(&encoder1_debounce_state.stable_state);
+        usb_hid_set_encoder_button(encoder1_debounce_state.stable_state);
     }
 }
 
