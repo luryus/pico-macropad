@@ -174,16 +174,19 @@ static void ui_draw_menu_screen() {
 
 static void ui_draw_usb_config_screen() {
     bool current_state = usb_hid_is_event_sending_enabled();
+    u8g2_SetDrawColor(&u8g2, 1);
+
+    u8g2_SetFont(&u8g2, u8g2_font_streamline_computers_devices_electronics_t);
+    u8g2_DrawGlyph(&u8g2, 0, 24, 0x0039 /* Streamline USB stick icon */);
 
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
-    u8g2_SetDrawColor(&u8g2, 1);
-    u8g2_DrawStr(&u8g2, 0, 8, current_state ? "HID events enabled" : "HID events disabled");
+    u8g2_DrawStr(&u8g2, 24, 8, current_state ? "HID enabled" : "HID disabled");
 
     u8g2_SetDrawColor(&u8g2, usb_config_selected_index == 0 ? 0 : 1);
-    u8g2_DrawStr(&u8g2, 0, 20, "Enable");
+    u8g2_DrawStr(&u8g2, 24, 24, "Enable");
 
     u8g2_SetDrawColor(&u8g2, usb_config_selected_index == 1 ? 0 : 1);
-    u8g2_DrawStr(&u8g2, 64, 20, "Disable");
+    u8g2_DrawStr(&u8g2, 72, 24, "Disable");
 }
 
 static void ui_draw_profile_name_screen() {
