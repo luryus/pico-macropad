@@ -4,6 +4,7 @@
 #include "display_ui.h"
 
 #include "hardware/clocks.h"
+#include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "u8g2.h"
 
@@ -29,6 +30,8 @@ enum ui_state_t {
     UI_STATE_SCREEN_USB_EVENT_SETTING,
     UI_STATE_SCREEN_PROFILE_NAME,
     UI_STATE_SCREEN_KEYMAP,
+    UI_STATE_SCREEN_FW_FLASH_CONFIRM,
+    UI_STATE_SCREEN_FW_FLASH_REBOOTING,
 } current_ui_state = UI_STATE_SCREEN_VERSION;
 
 typedef struct {
@@ -46,11 +49,21 @@ static volatile bool input_changed;
 
 static uint8_t menu_selected_index = 0;
 static uint8_t usb_config_selected_index = 0;
+static uint8_t fw_flash_confirm_selected_index = 0;
 
 static absolute_time_t profile_name_exit = {0};
 
-static const char *const menu_items[] = {"Debug", "USBConf", "Version", "Keymap"};
-#define MENU_ITEMS_TOTAL 4
+static const char *const menu_items[] = {"Debug", "USBConf", "Keymap", "Version", "FW Flash"};
+typedef enum menu_index_t {
+    MENU_INDEX_DEBUG,
+    MENU_INDEX_USB_CONF,
+    MENU_INDEX_KEYMAP,
+    MENU_INDEX_VERSION,
+    MENU_INDEX_FW_FLASH,
+
+    // Last
+    MENU_ITEMS_TOTAL,
+} menu_index_t;
 
 static u8g2_t u8g2;
 
@@ -81,6 +94,33 @@ static void ui_draw_version_screen() {
     snprintf(version_str, 30, "%s (%.6s)", MACROPAD_VERSION, MACROPAD_VERSION_GIT_SHA);
 
     u8g2_DrawStr(&u8g2, 24, 24, version_str);
+}
+
+static void ui_draw_fw_flash_confirm_screen() {
+    u8g2_SetDrawColor(&u8g2, 1);
+
+    u8g2_SetFont(&u8g2, u8g2_font_streamline_computers_devices_electronics_t);
+    u8g2_DrawGlyph(&u8g2, 0, 24, 0x0043 /* Streamline SD card icon */);
+
+    u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
+    u8g2_DrawStr(&u8g2, 24, 12, "Boot to flash?");
+
+    u8g2_SetDrawColor(&u8g2, fw_flash_confirm_selected_index == 0 ? 0 : 1);
+    u8g2_DrawStr(&u8g2, 24, 24, "No");
+
+    u8g2_SetDrawColor(&u8g2, fw_flash_confirm_selected_index == 1 ? 0 : 1);
+    u8g2_DrawStr(&u8g2, 64, 24, "Yes");
+}
+
+static void ui_draw_fw_flash_rebooting_screen() {
+    u8g2_SetDrawColor(&u8g2, 1);
+
+    u8g2_SetFont(&u8g2, u8g2_font_streamline_computers_devices_electronics_t);
+    u8g2_DrawGlyph(&u8g2, 0, 24, 0x0043 /* Streamline SD card icon */);
+
+    u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
+    u8g2_DrawStr(&u8g2, 24, 12, "Rebooting in");
+    u8g2_DrawStr(&u8g2, 24, 24, "FW flash mode...");
 }
 
 static void ui_draw_input_debug_screen() {
@@ -115,7 +155,7 @@ static void ui_draw_input_debug_screen() {
 }
 
 static void ui_draw_menu_screen() {
-    const uint8_t items_on_row = 3;
+    const uint8_t items_on_row = 2;
     const uint8_t item_w = 40;
     const uint8_t item_h = 8;
 
@@ -200,6 +240,37 @@ static void ui_handle_input_version_screen(
     }
 }
 
+static void ui_handle_input_fw_flash_confirm_screen(
+    __attribute__((unused)) bool button_raising, bool button_falling, int8_t encoder_delta) {
+
+    while (encoder_delta < 0) {
+        encoder_delta += 2;
+    }
+    if (encoder_delta > 0) {
+        fw_flash_confirm_selected_index = (fw_flash_confirm_selected_index + encoder_delta) % 2;
+    }
+
+    if (button_falling) {
+        if (fw_flash_confirm_selected_index == 0) {
+            // Go back to menu
+            current_ui_state = UI_STATE_SCREEN_MENU;
+        } else {
+            // Go to the "rebooting..." screen
+            current_ui_state = UI_STATE_SCREEN_FW_FLASH_REBOOTING;
+        }
+    }
+}
+
+__attribute__((noreturn)) static void ui_handle_input_fw_flash_rebooting_screen(
+    __attribute__((unused)) bool button_raising, __attribute__((unused)) bool button_falling,
+    __attribute__((unused)) int8_t encoder_delta) {
+
+    // No actual input handling here,
+    // just reboot the device into the storage flash (BOOTSEL) mode.
+    reset_usb_boot(0, 0);
+    // Bye
+}
+
 static void ui_handle_input_input_debug_screen(
     __attribute__((unused)) bool button_raising, bool button_falling,
     __attribute__((unused)) int8_t encoder_delta) {
@@ -242,17 +313,20 @@ static void ui_handle_input_menu_screen(
 
     if (button_falling) {
         switch (menu_selected_index) {
-        case 0:
+        case MENU_INDEX_DEBUG:
             current_ui_state = UI_STATE_SCREEN_INPUT_DEBUG;
             break;
-        case 1:
+        case MENU_INDEX_USB_CONF:
             current_ui_state = UI_STATE_SCREEN_USB_EVENT_SETTING;
             break;
-        case 2:
+        case MENU_INDEX_KEYMAP:
+            current_ui_state = UI_STATE_SCREEN_KEYMAP;
+            break;
+        case MENU_INDEX_VERSION:
             current_ui_state = UI_STATE_SCREEN_VERSION;
             break;
-        case 3:
-            current_ui_state = UI_STATE_SCREEN_KEYMAP;
+        case MENU_INDEX_FW_FLASH:
+            current_ui_state = UI_STATE_SCREEN_FW_FLASH_CONFIRM;
             break;
         default:
             LOGW("Unknown menu item selected: %hhu", menu_selected_index);
@@ -340,6 +414,12 @@ void ui_task() {
     case UI_STATE_SCREEN_KEYMAP:
         ui_handle_input_keymap_screen(button_raising, button_falling, encoder_delta);
         break;
+    case UI_STATE_SCREEN_FW_FLASH_CONFIRM:
+        ui_handle_input_fw_flash_confirm_screen(button_raising, button_falling, encoder_delta);
+        break;
+    case UI_STATE_SCREEN_FW_FLASH_REBOOTING:
+        ui_handle_input_fw_flash_rebooting_screen(button_raising, button_falling, encoder_delta);
+        break;
     }
 
     // Draw
@@ -362,6 +442,12 @@ void ui_task() {
         break;
     case UI_STATE_SCREEN_KEYMAP:
         ui_draw_keymap_screen();
+        break;
+    case UI_STATE_SCREEN_FW_FLASH_CONFIRM:
+        ui_draw_fw_flash_confirm_screen();
+        break;
+    case UI_STATE_SCREEN_FW_FLASH_REBOOTING:
+        ui_draw_fw_flash_rebooting_screen();
         break;
     }
     u8g2_SendBuffer(&u8g2);
