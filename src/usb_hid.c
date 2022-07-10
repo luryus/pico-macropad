@@ -15,7 +15,7 @@ static volatile bool curr_encoder_btn = false;
 static volatile bool keypad_dirty = true;
 static volatile bool encoder_dirty = true;
 
-static bool event_sending_enabled = false;
+static bool event_sending_enabled = true;
 
 void usb_hid_set_keys(uint16_t key_states) {
     keypad_dirty = true;
