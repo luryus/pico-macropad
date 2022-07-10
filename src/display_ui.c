@@ -70,13 +70,17 @@ static inline bool get_current_key_state(uint8_t y, uint8_t x) {
 
 static void ui_draw_version_screen() {
     u8g2_SetDrawColor(&u8g2, 1);
+
+    u8g2_SetFont(&u8g2, u8g2_font_streamline_computers_devices_electronics_t);
+    u8g2_DrawGlyph(&u8g2, 0, 24, 0x0040 /* Streamline numpad icon */);
+
     u8g2_SetFont(&u8g2, u8g2_font_t0_11_mr);
-    u8g2_DrawStr(&u8g2, 0, 8, "Macropad");
+    u8g2_DrawStr(&u8g2, 24, 12, "Pico Macropad");
 
     char version_str[30] = {0};
     snprintf(version_str, 30, "%s (%.6s)", MACROPAD_VERSION, MACROPAD_VERSION_GIT_SHA);
 
-    u8g2_DrawStr(&u8g2, 0, 20, version_str);
+    u8g2_DrawStr(&u8g2, 24, 24, version_str);
 }
 
 static void ui_draw_input_debug_screen() {
